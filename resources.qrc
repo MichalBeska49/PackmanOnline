@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/img/logo.png</file>
+        <file>assets/palette/palette.xml</file>
+    </qresource>
+</RCC>
