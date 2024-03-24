@@ -333,7 +333,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="frame">
+        <widget class="QFrame" name="gameFrame">
          <property name="frameShape">
           <enum>QFrame::StyledPanel</enum>
          </property>

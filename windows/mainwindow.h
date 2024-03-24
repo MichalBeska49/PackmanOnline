@@ -17,7 +17,12 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+private slots:
+    void on_pushButtonHost_clicked();
+
 private:
     Ui::MainWindow *ui;
+    int mazeSize = 19;
 };
+
 #endif // MAINWINDOW_H

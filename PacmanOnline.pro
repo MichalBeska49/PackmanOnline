@@ -1,4 +1,6 @@
-QT       += core gui
+QT += \
+    core gui \
+    network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -9,18 +11,32 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    main.cpp \
+    game/entities/character.cpp \
+    game/entities/ghost.cpp \
+    game/entities/maze.cpp \
+    game/entities/pacman.cpp \
+    game/online/client.cpp \
+    game/online/host.cpp \
     windows/boardwindow.cpp \
-    windows/mainwindow.cpp
+    windows/hostwindow.cpp \
+    windows/mainwindow.cpp \
+    main.cpp
 
 HEADERS += \
+    game/entities/character.h \
+    game/entities/ghost.h \
+    game/entities/maze.h \
+    game/entities/pacman.h \
+    game/online/client.h \
+    game/online/host.h \
+    game/resources.h \
     windows/boardwindow.h \
-    windows/character.h \
-    windows/ghost.h \
+    windows/hostwindow.h \
     windows/mainwindow.h
 
 FORMS += \
     windows/boardwindow.ui \
+    windows/hostwindow.ui \
     windows/mainwindow.ui
 
 # Default rules for deployment.

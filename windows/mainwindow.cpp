@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QPixmap>
-#include "boardwindow.h"
+#include "hostwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -10,19 +10,16 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     QPixmap pixmap(":/assets/img/logo.png");
-
     ui->label->setPixmap(pixmap.scaledToWidth(600));
-
-    QObject::connect(ui->pushButtonHost, &QPushButton::clicked, [&]() {
-        QWidget *window = ui->pushButtonHost->window();
-        window->close();
-
-        BoardWindow* boardWindow = new BoardWindow(this);
-        boardWindow->show();
-    });
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::on_pushButtonHost_clicked()
+{
+    HostWindow* hostWindow = new HostWindow(this);
+    hostWindow->show();
 }
