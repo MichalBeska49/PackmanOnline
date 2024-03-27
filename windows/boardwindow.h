@@ -35,16 +35,27 @@ private:
     QLabel* label;
 
     QGraphicsScene *scene;
-    Maze* maze;
+    Maze maze;
     QList<Ghost*> ghosts;
     QList<Pacman*> pacmans;
+    Pacman* playerPacman;
     int playerPacmanId;
+    int dotsEaten;
 
-    void movePacman(QPoint newPosition);
-    void moveGhosts();
-    bool checkCollisions(QPoint newPosition);
+    void initPacmans();
+    void initGhosts();
+    void loadCharacters();
+    void movePlayerPacman();
+    bool checkPacmanCollisions(Resources::Direction direction);
+    bool checkGhostCollisions(Ghost *ghost);
+    void handleCage();
     Pacman* findPacman(int pacmanId);
     void keyPressEvent(QKeyEvent *event);
+    void ghostMovement(Ghost* ghost);
+    float calculateDistance(Ghost* ghost, int addX, int addY);
+    Ghost* findGhost(Resources::GhostType ghostType);
+    void teleportTunnels(Character* character);
+    void handleGhostAttack(Ghost* ghost);
 
     QTimer timer;
     float loopTime;
