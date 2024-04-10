@@ -138,7 +138,7 @@ void Ghost::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWi
     painter->drawRect(boundingRect());
 }
 
-Pacman* Ghost::findClosetPacman(QList<Pacman*> pacmans) {
+Pacman* Ghost::findClosetPacman(std::list<Pacman*> pacmans) {
     Pacman* closetPacman;
     float min = Resources::MAZE_SIZE;
 

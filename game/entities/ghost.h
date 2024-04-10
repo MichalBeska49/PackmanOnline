@@ -49,7 +49,7 @@ public:
     void setScattering(bool s);
 
     void laveCage();
-    Pacman* findClosetPacman(QList<Pacman*> pacmans);
+    Pacman* findClosetPacman(std::list<Pacman*> pacmans);
 
     bool shouldTakeDecision();
     void setTakeDecision(bool d);

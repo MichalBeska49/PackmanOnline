@@ -71,8 +71,8 @@ private:
 
     QGraphicsScene *scene;
     Maze maze;
-    QList<Ghost*> ghosts;
-    QList<Pacman*> pacmans;
+    std::list<Ghost*> ghosts;
+    std::list<Pacman*> pacmans;
     Pacman* playerPacman;
     int playerPacmanId;
     int dotsEaten;

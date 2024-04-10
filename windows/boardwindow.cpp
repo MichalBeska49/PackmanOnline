@@ -22,8 +22,8 @@ BoardWindow::BoardWindow(QString name, quint16 port, QWidget *parent)
         qDebug() << "Server started on port";
     }
 
-    Pacman* yourPacman = new Pacman(pacmans.count(), name);
-    pacmans.append(yourPacman);
+    Pacman* yourPacman = new Pacman(pacmans.size(), name);
+    pacmans.push_back(yourPacman);
     playerPacman = yourPacman;
     playerPacmanId = yourPacman->getId();
 
@@ -309,16 +309,16 @@ void BoardWindow::initGhosts()
 {
     Ghost* blinky = new Ghost(9, 7, 16, 1, Resources::Direction::Right, Resources::GhostType::Blinky);
     blinky->laveCage();
-    ghosts.append(blinky);
+    ghosts.push_back(blinky);
 
     Ghost* clyde = new Ghost(9, 9, 3, 17, Resources::Direction::Left, Resources::GhostType::Clyde);
-    ghosts.append(clyde);
+    ghosts.push_back(clyde);
 
     Ghost* inky = new Ghost(10, 9, 16, 17, Resources::Direction::Right, Resources::GhostType::Inky);
-    ghosts.append(inky);
+    ghosts.push_back(inky);
 
     Ghost* pinky = new Ghost(8, 9, 3, 1, Resources::Direction::Left, Resources::GhostType::Pinky);
-    ghosts.append(pinky);
+    ghosts.push_back(pinky);
 
     for(Ghost* ghost: ghosts){
         ghost->setZValue(1);
@@ -521,8 +521,8 @@ void BoardWindow::weakAllGhosts()
 }
 
 void BoardWindow::addNewPacman(QTcpSocket *newClientSocket){
-    Pacman* newPacman = new Pacman(pacmans.count(), "gosc");
-    pacmans.append(newPacman);
+    Pacman* newPacman = new Pacman(pacmans.size(), "gosc");
+    pacmans.push_back(newPacman);
 
     host.sendPacmanIdToClient(newClientSocket, QByteArray::number(newPacman->getId()));
 }
@@ -537,11 +537,11 @@ void BoardWindow::syncPacmans(const QByteArray &byteArray){
     QJsonDocument jsonDoc = QJsonDocument::fromJson(byteArray);
     QJsonArray jsonArray = jsonDoc.array();
 
-    QList<Pacman*> pacmanList;
+    std::list<Pacman*> pacmanList;
     for (const QJsonValue &value : jsonArray) {
         Pacman* newPacman = new Pacman();
         newPacman->fromJsonObject(value.toObject());
-        pacmanList.append(newPacman);
+        pacmanList.push_back(newPacman);
 
         for (Pacman*& pacman : pacmans) {
             if(newPacman->getId() == pacman->getId()){
@@ -550,7 +550,7 @@ void BoardWindow::syncPacmans(const QByteArray &byteArray){
         }
     }
 
-    if(pacmans.count() != 0){
+    if(pacmans.size() != 0){
         return;
     }
 
