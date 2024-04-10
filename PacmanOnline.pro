@@ -19,6 +19,7 @@ SOURCES += \
     game/online/host.cpp \
     windows/boardwindow.cpp \
     windows/hostwindow.cpp \
+    windows/joinwindow.cpp \
     windows/mainwindow.cpp \
     main.cpp
 
@@ -32,11 +33,13 @@ HEADERS += \
     game/resources.h \
     windows/boardwindow.h \
     windows/hostwindow.h \
+    windows/joinwindow.h \
     windows/mainwindow.h
 
 FORMS += \
     windows/boardwindow.ui \
     windows/hostwindow.ui \
+    windows/joinwindow.ui \
     windows/mainwindow.ui
 
 # Default rules for deployment.

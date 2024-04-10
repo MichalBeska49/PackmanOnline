@@ -33,14 +33,14 @@
       <widget class="QLineEdit" name="nameInput"/>
      </item>
      <item>
-      <widget class="QLabel" name="addressLabel">
+      <widget class="QLabel" name="portLabel">
        <property name="text">
-        <string>Adres:</string>
+        <string>Port:</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="addressInput"/>
+      <widget class="QLineEdit" name="portInput"/>
      </item>
     </layout>
    </item>
@@ -54,5 +54,25 @@
   </layout>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>okButton</sender>
+   <signal>clicked()</signal>
+   <receiver>HostWindow</receiver>
+   <slot>okButtonClicked()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>95</x>
+     <y>280</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>34</x>
+     <y>257</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>okButtonClicked()</slot>
+ </slots>
 </ui>

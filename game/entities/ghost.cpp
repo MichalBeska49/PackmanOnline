@@ -6,11 +6,13 @@ Ghost::Ghost(int tilePosX, int tilePosY, int destinationX, int destinationY, Res
     , outOfCage(false)
     , ghostType(ghostType)
     , speed(1)
-    , moving(moving)
+    , direction(moving)
     , weak(false)
 {
     setDestination(destinationX, destinationY);
 }
+
+Ghost::Ghost(){}
 
 void Ghost::setDestination(int x, int y)
 {
@@ -28,14 +30,14 @@ int Ghost::getDestY()
     return destinationTileY;
 }
 
-Resources::Direction Ghost::getMoving()
+Resources::Direction Ghost::getDirection()
 {
-    return moving;
+    return direction;
 }
 
-void Ghost::setMoving(Resources::Direction d)
+void Ghost::setDirection(Resources::Direction d)
 {
-    moving = d;
+    direction = d;
 }
 
 void Ghost::setSpeed(float s){
@@ -49,7 +51,7 @@ Resources::GhostType Ghost::getGhostType()
 
 void Ghost::move()
 {
-    switch (moving)
+    switch (direction)
     {
     case Resources::Direction::Up:
         Character::move(0, -speed);
@@ -97,11 +99,11 @@ void Ghost::setWeak(bool w)
 }
 
 bool Ghost::getChangeMoving(){
-    return changeMoving;
+    return changeDirection;
 }
 
 void Ghost::setChangeMoving(bool d){
-    changeMoving = d;
+    changeDirection = d;
 }
 
 QRectF Ghost::boundingRect() const {
@@ -160,5 +162,30 @@ bool Ghost::shouldTakeDecision()
 void Ghost::setTakeDecision(bool d)
 {
     decision = d;
+}
+
+QJsonObject Ghost::toJsonObject() const {
+    QJsonObject json;
+
+    json["ghostType"] = int(ghostType);
+    json["weak"] = weak;
+    json["screenPosX"] = screenPosX;
+    json["screenPosY"] = screenPosY;
+
+    return json;
+}
+
+void Ghost::fromJsonObject(const QJsonObject &json) {
+    ghostType = static_cast<Resources::GhostType>(json["ghostType"].toInt());
+    weak = json["weak"].toBool();
+    screenPosX = json["screenPosX"].toInt();
+    screenPosY = json["screenPosY"].toInt();
+}
+
+void Ghost::reaload(Ghost* ghost) {
+    ghostType = ghost->ghostType;
+    weak = ghost->weak;
+    screenPosX = ghost->screenPosX;
+    screenPosY = ghost->screenPosY;
 }
 

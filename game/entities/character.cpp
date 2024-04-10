@@ -10,6 +10,8 @@ Character::Character(int tilePosX, int tilePosY)
     screenPosY = tilePosY * Resources::MAZE_TILE_SIZE;
 }
 
+Character::Character() {}
+
 float Character::getScreenPosX()
 {
     return screenPosX;

@@ -80,6 +80,11 @@ bool Maze::removeDot(Pacman* pacman)
     return false;
 }
 
+void Maze::removeDot(int x, int y)
+{
+    tiles[y][x] = EMPTY_FIELD;
+}
+
 bool Maze::isIntersection(int x, int y){
     int emptyCount = 0;
 

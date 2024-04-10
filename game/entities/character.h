@@ -3,9 +3,26 @@
 
 #include <QGraphicsItem>
 
+/**
+ * @class Character
+ * @brief Klasa reprezentująca postać w grze, dziedzicząca po QGraphicsItem.
+ *
+ * Klasa Character służy do reprezentowania postaci w grze. Pozwala na zarządzanie
+ * pozycją postaci na ekranie oraz na planszy gry. Umożliwia ruch oraz teleportację postaci.
+ * Jest to klasa abstrakcyjna, wymagająca implementacji metod boundingRect i paint w klasach pochodnych.
+ */
 class Character : public QGraphicsItem {
 public:
+    /**
+     * @brief Konstruktor tworzący postać na określonej pozycji na planszy.
+     * @param tilePosX Pozycja X postaci na planszy.
+     * @param tilePosY Pozycja Y postaci na planszy.
+     */
     Character(int tilePosX, int tilePosY);
+    /**
+     * @brief Konstruktor domyślny.
+     */
+    Character();
 
     float getScreenPosX();
     float getScreenPosY();

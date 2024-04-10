@@ -5,10 +5,29 @@
 #include "game/resources.h"
 #include <QPainter>
 #include <QKeyEvent>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonDocument>
 
+/**
+ * @class Pacman
+ * @brief Klasa reprezentująca postać Pacmana w grze, dziedzicząca po QObject oraz Character.
+ *
+ * Klasa Pacman zarządza wszystkimi aspektami dotyczącymi postaci Pacmana, takimi jak ruch,
+ * kierunek, punktacja, stan (żywy lub martwy) oraz interakcje z elementami gry, takimi jak kropki (dots).
+ */
 class Pacman :public QObject, public Character {
 public:
-    Pacman(int id);
+    /**
+     * @brief Konstruktor tworzący obiekt Pacmana z określonym identyfikatorem i nazwą.
+     * @param id Unikalny identyfikator dla obiektu Pacmana.
+     * @param name Nazwa przypisana do obiektu Pacmana.
+     */
+    Pacman(int id, QString name);
+    /**
+     * @brief Konstruktor domyślny.
+     */
+    Pacman();
 
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
@@ -25,16 +44,24 @@ public:
 
     void setDead(bool d);
     bool isDead();
+
     int getId();
 
     int getScore();
     void setScore(int s);
+
+    QString getName();
+
+    QJsonObject toJsonObject() const;
+    void fromJsonObject(const QJsonObject &json);
+    void reaload(Pacman* newPacman);
 
 private:
     int id;
     bool dead;
     int eatenDots;
     int score;
+    QString name;
     Resources::Direction direction;
     Resources::Direction nextDirection;
 };

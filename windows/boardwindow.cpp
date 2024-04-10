@@ -1,21 +1,84 @@
 #include "boardwindow.h"
 #include "ui_boardwindow.h"
-#include "game/online/host.h"
 #include "game/entities/maze.h"
 #include "game/resources.h"
+#include "mainwindow.h"
 
-BoardWindow::BoardWindow(QWidget *parent)
+BoardWindow::BoardWindow(QString name, quint16 port, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::BoardWindow)
-    , loopTime(0.0f)
     , dotsEaten(0)
+    , isHost(true)
+    , playerName(name)
 {
     ui->setupUi(this);
 
-    Host server(0);
-    if (!server.startServer(12345)) { // Uruchomienie serwera na porcie 12345
+    ui->label->setText(host.startServer(port).toString());
+
+    connect(&host, &Host::onNewClient, this, &BoardWindow::addNewPacman);
+    connect(&host, &Host::onGetPacmanNextDirection, this, &BoardWindow::setClientPacmanNextDirection);
+
+    if (ui->label->text() != "") { // Uruchomienie serwera na porcie 12345
         qDebug() << "Server started on port";
     }
+
+    Pacman* yourPacman = new Pacman(pacmans.count(), name);
+    pacmans.append(yourPacman);
+    playerPacman = yourPacman;
+    playerPacmanId = yourPacman->getId();
+
+    initScene();
+
+    initPacmans();
+    initGhosts();
+    loadCharacters();
+
+    initTimer();
+}
+
+BoardWindow::BoardWindow(QString name, QHostAddress address, quint16 port, QWidget *parent)
+    : QDialog(parent)
+    , ui(new Ui::BoardWindow)
+    , dotsEaten(0)
+    , isHost(false)
+    , playerName(name)
+{
+    ui->setupUi(this);
+
+    client.connectToServer(address, port);
+
+    connect(&client, &Client::onGetClientPacmanId, this, &BoardWindow::addPlayerPacman);
+    connect(&client, &Client::onGetPacmansFromHost, this, &BoardWindow::syncPacmans);
+    connect(&client, &Client::onGetGhostsFromHost, this, &BoardWindow::syncGhosts);
+    connect(&client, &Client::onGetRemoveDotFromHost, this, &BoardWindow::syncDots);
+
+    initScene();
+    initGhosts();
+
+    initTimer();
+}
+
+BoardWindow::~BoardWindow()
+{
+    delete ui;
+}
+
+void BoardWindow::backToManu(){
+    MainWindow* mainWindow = new MainWindow(this);
+    mainWindow->show();
+
+    QWidget* boardWindow = ui->gameFrame->parentWidget();
+    boardWindow->close();
+}
+
+void BoardWindow::initTimer(){
+    connect(&timer, &QTimer::timeout, this, &BoardWindow::loop);
+    connect(&maze, &Maze::bigDotIsEaten, this, &BoardWindow::weakAllGhosts);
+
+    timer.start(int(1000.0f/Resources::FPS));
+}
+
+void BoardWindow::initScene(){
 
     QGraphicsView *view = new QGraphicsView(this);
     scene = new QGraphicsScene(this);
@@ -29,103 +92,103 @@ BoardWindow::BoardWindow(QWidget *parent)
     QVBoxLayout *layout = new QVBoxLayout();
     layout->addWidget(view);
     ui->gameFrame->setLayout(layout);
-
-    initPacmans();
-    initGhosts();
-    loadCharacters();
-
-    connect(&timer, &QTimer::timeout, this, &BoardWindow::loop);
-    connect(&maze, &Maze::bigDotIsEaten, this, &BoardWindow::weakAllGhosts);
-
-    timer.start(int(1000.0f/Resources::FPS));
-}
-
-BoardWindow::~BoardWindow()
-{
-    delete ui;
 }
 
 void BoardWindow::loop() {
-    for(Pacman* pacman: pacmans){
-        if(!pacman->isDead()){
-            movePlayerPacman();
+    if(isHost){
+        for(Pacman* pacman: pacmans){
+            if(!pacman->isDead()){
+                movePacman(pacman);
+                pacman->setPos(pacman->getScreenPosX(), pacman->getScreenPosY());
+            }
+
+            if(maze.removeDot(pacman)){
+                dotsEaten++;
+
+                reloadScene();
+
+                sendRemoveDotPosition(pacman->getTileX(), pacman->getTileY());
+            }
+
+            teleportTunnels(pacman);
+        }
+
+
+        for(Ghost* ghost: ghosts){
+            if(ghost->isWeak())
+            {
+                ghost->setDestination(9,7);
+
+                if(ghost->getTileX() == 9 && ghost->getTileY() == 7){
+                    ghost->setWeak(false);
+                    ghost->setSpeed(1);
+                }
+
+            } else if(!ghost->isScattering()){
+                Pacman* pacman = ghost->findClosetPacman(pacmans);
+
+                switch (ghost->getGhostType()) {
+                case Resources::GhostType::Blinky:
+                    ghost->setDestination(pacman->getTileX(), pacman->getTileY());
+                    break;
+
+                case Resources::GhostType::Pinky:
+                    switch (pacman->getDirection())
+                    {
+                    case Resources::Direction::Up:
+                        ghost->setDestination(pacman->getTileX(), pacman->getTileY() - 4);
+                        break;
+                    case Resources::Direction::Down:
+                        ghost->setDestination(pacman->getTileX(), pacman->getTileY() + 4);
+                        break;
+                    case Resources::Direction::Left:
+                        ghost->setDestination(pacman->getTileX() - 4, pacman->getTileY());
+                        break;
+                    case Resources::Direction::Right:
+                        ghost->setDestination(pacman->getTileX() + 4, pacman->getTileY());
+                        break;
+                    }
+                    break;
+
+                case Resources::GhostType::Inky:
+                    ghost->setDestination(pacman->getTileX() + (ghost->getTileX() - pacman->getTileX()), pacman->getTileY() + (ghost->getTileY() - pacman->getTileY()));
+                    break;
+
+                case Resources::GhostType::Clyde:
+                    if (sqrt(pow((ghost->getTileX() - (pacman->getTileX())), 2) + pow((ghost->getTileY() - (pacman->getTileY())), 2)) < 9)
+                    {
+                        ghost->setDestination(pacman->getTileX(), pacman->getTileY());
+                    }
+                    else
+                    {
+                        ghost->setDestination(1, Resources::MAZE_SIZE-1);
+                    }
+                    break;
+                }
+            }
+
+            ghostMovement(ghost);
+            ghost->setPos(ghost->getScreenPosX(), ghost->getScreenPosY());
+
+            teleportTunnels(ghost);
+
+            handleGhostAttack(ghost);
+        }
+
+        handleCage();
+
+        sendPacmans();
+        sendGhosts();
+
+    } else {
+        for(Pacman* pacman: pacmans){
             pacman->setPos(pacman->getScreenPosX(), pacman->getScreenPosY());
         }
 
-        if(maze.removeDot(pacman)){
-            dotsEaten++;
-
-            scene->items().clear();
-            maze.renderMaze(scene);
-            loadCharacters();
+        for(Ghost* ghost: ghosts){
+            ghost->setPos(ghost->getScreenPosX(), ghost->getScreenPosY());
         }
-
-        teleportTunnels(pacman);
     }
-
-
-    for(Ghost* ghost: ghosts){
-        if(ghost->isWeak())
-        {
-            ghost->setDestination(9,7);
-
-            if(ghost->getTileX() == 9 && ghost->getTileY() == 7){
-                ghost->setWeak(false);
-                ghost->setSpeed(1);
-            }
-
-        } else if(!ghost->isScattering()){
-            Pacman* pacman = ghost->findClosetPacman(pacmans);
-
-            switch (ghost->getGhostType()) {
-            case Resources::GhostType::Blinky:
-                ghost->setDestination(pacman->getTileX(), pacman->getTileY());
-                break;
-
-            case Resources::GhostType::Pinky:
-                switch (pacman->getDirection())
-                {
-                case Resources::Direction::Up:
-                    ghost->setDestination(pacman->getTileX(), pacman->getTileY() - 4);
-                    break;
-                case Resources::Direction::Down:
-                    ghost->setDestination(pacman->getTileX(), pacman->getTileY() + 4);
-                    break;
-                case Resources::Direction::Left:
-                    ghost->setDestination(pacman->getTileX() - 4, pacman->getTileY());
-                    break;
-                case Resources::Direction::Right:
-                    ghost->setDestination(pacman->getTileX() + 4, pacman->getTileY());
-                    break;
-                }
-                break;
-
-            case Resources::GhostType::Inky:
-                ghost->setDestination(pacman->getTileX() + (ghost->getTileX() - pacman->getTileX()), pacman->getTileY() + (ghost->getTileY() - pacman->getTileY()));
-                break;
-
-            case Resources::GhostType::Clyde:
-                if (sqrt(pow((ghost->getTileX() - (pacman->getTileX())), 2) + pow((ghost->getTileY() - (pacman->getTileY())), 2)) < 9)
-                {
-                    ghost->setDestination(pacman->getTileX(), pacman->getTileY());
-                }
-                else
-                {
-                    ghost->setDestination(1, Resources::MAZE_SIZE-1);
-                }
-                break;
-            }
-        }
-
-        ghostMovement(ghost);
-        ghost->setPos(ghost->getScreenPosX(), ghost->getScreenPosY());
-
-        teleportTunnels(ghost);
-
-        handleGhostAttack(ghost);
-    }
-
-    handleCage();
 }
 
 void BoardWindow::restart()
@@ -133,40 +196,55 @@ void BoardWindow::restart()
 }
 
 void BoardWindow::keyPressEvent(QKeyEvent *event) {
+    Resources::Direction playerNextDirection;
+
     switch (event->key()) {
         case Qt::Key_W:
-            playerPacman->setNextDirection(Resources::Direction::Up);
+            playerNextDirection = Resources::Direction::Up;
             break;
         case Qt::Key_S:
-            playerPacman->setNextDirection(Resources::Direction::Down);
+            playerNextDirection = Resources::Direction::Down;
             break;
         case Qt::Key_A:
-            playerPacman->setNextDirection(Resources::Direction::Left);
+            playerNextDirection = Resources::Direction::Left;
             break;
         case Qt::Key_D:
-            playerPacman->setNextDirection(Resources::Direction::Right);
+            playerNextDirection = Resources::Direction::Right;
             break;
         default:
             QDialog::keyPressEvent(event);
             return;
     }
+    if(isHost){
+        playerPacman->setNextDirection(playerNextDirection);
+    } else {
+        QJsonObject json;
+
+        json["pacmanId"] = playerPacmanId;
+        json["nextDirection"] = int(playerNextDirection);
+
+        QJsonDocument jsonDoc(json);
+        QString jsonString = jsonDoc.toJson(QJsonDocument::Compact);
+
+        client.sendDataToHost(Resources::HostMessageType::PacmanChangeDirection, jsonString.toUtf8());
+    }
 }
 
-void BoardWindow::movePlayerPacman() {
-    if(checkPacmanCollisions(playerPacman->getNextDirection())
-        && (int)(playerPacman->getScreenPosX()) % Resources::MAZE_TILE_SIZE == 0
-        && (int)(playerPacman->getScreenPosY()) % Resources::MAZE_TILE_SIZE == 0)
+void BoardWindow::movePacman(Pacman* pacman) {
+    if(checkPacmanCollisions(pacman, pacman->getNextDirection())
+        && (int)(pacman->getScreenPosX()) % Resources::MAZE_TILE_SIZE == 0
+        && (int)(pacman->getScreenPosY()) % Resources::MAZE_TILE_SIZE == 0)
     {
-        playerPacman->setDirection(playerPacman->getNextDirection());
-        playerPacman->move();
-
-    }
-
-    if(!checkPacmanCollisions(playerPacman->getDirection())){
+        pacman->setDirection(pacman->getNextDirection());
+        pacman->move();
         return;
     }
 
-    playerPacman->move();
+    if(!checkPacmanCollisions(pacman, pacman->getDirection())){
+        return;
+    }
+
+    pacman->move();
 }
 
 Pacman* BoardWindow::findPacman(int pacmanId) {
@@ -177,22 +255,22 @@ Pacman* BoardWindow::findPacman(int pacmanId) {
     }
 }
 
-bool BoardWindow::checkPacmanCollisions(Resources::Direction d) {
+bool BoardWindow::checkPacmanCollisions(Pacman* pacman, Resources::Direction d) {
     if (d != Resources::Direction::Unset)
     {
         switch (d)
         {
         case Resources::Direction::Up:
-            return !maze.tileBlocks(playerPacman->getTileX(), playerPacman->getTileY() - 1);
+            return !maze.tileBlocks(pacman->getTileX(), pacman->getTileY() - 1);
             break;
         case Resources::Direction::Down:
-            return !maze.tileBlocks(playerPacman->getTileX(), playerPacman->getTileY() + 1);
+            return !maze.tileBlocks(pacman->getTileX(), pacman->getTileY() + 1);
             break;
         case Resources::Direction::Left:
-            return !maze.tileBlocks(playerPacman->getTileX() - 1, playerPacman->getTileY());
+            return !maze.tileBlocks(pacman->getTileX() - 1, pacman->getTileY());
             break;
         case Resources::Direction::Right:
-            return !maze.tileBlocks(playerPacman->getTileX() + 1, playerPacman->getTileY());
+            return !maze.tileBlocks(pacman->getTileX() + 1, pacman->getTileY());
             break;
         case Resources::Direction::Unset:
 
@@ -220,28 +298,26 @@ void BoardWindow::loadCharacters()
 
 void BoardWindow::initPacmans()
 {
-
-    //TO DO
-    Pacman* yourPacman = new Pacman(0);
-    pacmans.append(yourPacman);
-    playerPacman = yourPacman;
-    playerPacmanId = 0;
-
+    for(Pacman* pacman: pacmans){
+        pacman->setZValue(1);
+        scene->addItem(pacman);
+        pacman->setPos(pacman->getScreenPosX(), pacman->getScreenPosY());
+    }
 }
 
 void BoardWindow::initGhosts()
 {
-    Ghost* blinky = new Ghost(9, 7, 16, 0, Resources::Direction::Right, Resources::GhostType::Blinky);
+    Ghost* blinky = new Ghost(9, 7, 16, 1, Resources::Direction::Right, Resources::GhostType::Blinky);
     blinky->laveCage();
     ghosts.append(blinky);
 
-    Ghost* clyde = new Ghost(9, 9, 3, 18, Resources::Direction::Left, Resources::GhostType::Clyde);
+    Ghost* clyde = new Ghost(9, 9, 3, 17, Resources::Direction::Left, Resources::GhostType::Clyde);
     ghosts.append(clyde);
 
-    Ghost* inky = new Ghost(10, 9, 16, 18, Resources::Direction::Right, Resources::GhostType::Inky);
+    Ghost* inky = new Ghost(10, 9, 16, 17, Resources::Direction::Right, Resources::GhostType::Inky);
     ghosts.append(inky);
 
-    Ghost* pinky = new Ghost(8, 9, 3, 0, Resources::Direction::Left, Resources::GhostType::Pinky);
+    Ghost* pinky = new Ghost(8, 9, 3, 1, Resources::Direction::Left, Resources::GhostType::Pinky);
     ghosts.append(pinky);
 
     for(Ghost* ghost: ghosts){
@@ -274,42 +350,42 @@ void BoardWindow::ghostMovement(Ghost* ghost)
             float up = calculateDistance(ghost, 0, -1);
             float down = calculateDistance(ghost, 0, 1);
 
-            switch (ghost->getMoving())
+            switch (ghost->getDirection())
             {
             case Resources::Direction::Up:
                 if (right < left && right < up)
-                    ghost->setMoving(Resources::Direction::Right);
+                    ghost->setDirection(Resources::Direction::Right);
                 else if (left < right && left < up)
-                    ghost->setMoving(Resources::Direction::Left);
+                    ghost->setDirection(Resources::Direction::Left);
                 else if (up < left && up < right)
-                    ghost->setMoving(Resources::Direction::Up);
+                    ghost->setDirection(Resources::Direction::Up);
                 break;
 
             case Resources::Direction::Down:
                 if (right < left && right < down)
-                    ghost->setMoving(Resources::Direction::Right);
+                    ghost->setDirection(Resources::Direction::Right);
                 else if (left < right && left < down)
-                    ghost->setMoving(Resources::Direction::Left);
+                    ghost->setDirection(Resources::Direction::Left);
                 else if (down < left && down < right)
-                    ghost->setMoving(Resources::Direction::Down);
+                    ghost->setDirection(Resources::Direction::Down);
                 break;
 
             case Resources::Direction::Left:
                 if (left < up && left < down)
-                    ghost->setMoving(Resources::Direction::Left);
+                    ghost->setDirection(Resources::Direction::Left);
                 else if (up < left && up < down)
-                    ghost->setMoving(Resources::Direction::Up);
+                    ghost->setDirection(Resources::Direction::Up);
                 else if (down < left && down < up)
-                    ghost->setMoving(Resources::Direction::Down);
+                    ghost->setDirection(Resources::Direction::Down);
                 break;
 
             case Resources::Direction::Right:
                 if (right < up && right < down)
-                    ghost->setMoving(Resources::Direction::Right);
+                    ghost->setDirection(Resources::Direction::Right);
                 else if (up < right && up < down)
-                    ghost->setMoving(Resources::Direction::Up);
+                    ghost->setDirection(Resources::Direction::Up);
                 else if (down < up && down < right)
-                    ghost->setMoving(Resources::Direction::Down);
+                    ghost->setDirection(Resources::Direction::Down);
                 break;
 
             case Resources::Direction::Unset:
@@ -346,7 +422,7 @@ float BoardWindow::calculateDistance(Ghost *ghost, int addX, int addY)
 
 bool BoardWindow::checkGhostCollisions(Ghost *ghost)
 {
-    switch (ghost->getMoving())
+    switch (ghost->getDirection())
     {
     case Resources::Direction::Up:
         return !maze.tileBlocks(ghost->getTileX(), ghost->getTileY() - 1);
@@ -443,3 +519,125 @@ void BoardWindow::weakAllGhosts()
         }
     }
 }
+
+void BoardWindow::addNewPacman(QTcpSocket *newClientSocket){
+    Pacman* newPacman = new Pacman(pacmans.count(), "gosc");
+    pacmans.append(newPacman);
+
+    host.sendPacmanIdToClient(newClientSocket, QByteArray::number(newPacman->getId()));
+}
+
+void BoardWindow::addPlayerPacman(int id){
+    Pacman* yourPacman = new Pacman(id, playerName);
+    playerPacman = yourPacman;
+    playerPacmanId = yourPacman->getId();
+}
+
+void BoardWindow::syncPacmans(const QByteArray &byteArray){
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(byteArray);
+    QJsonArray jsonArray = jsonDoc.array();
+
+    QList<Pacman*> pacmanList;
+    for (const QJsonValue &value : jsonArray) {
+        Pacman* newPacman = new Pacman();
+        newPacman->fromJsonObject(value.toObject());
+        pacmanList.append(newPacman);
+
+        for (Pacman*& pacman : pacmans) {
+            if(newPacman->getId() == pacman->getId()){
+                pacman->reaload(newPacman);
+            }
+        }
+    }
+
+    if(pacmans.count() != 0){
+        return;
+    }
+
+    pacmans = pacmanList;
+    initPacmans();
+}
+
+void BoardWindow::syncGhosts(const QByteArray &byteArray){
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(byteArray);
+    QJsonArray jsonArray = jsonDoc.array();
+
+    for (const QJsonValue &value : jsonArray) {
+        Ghost* ghostToUpdate = new Ghost();
+        ghostToUpdate->fromJsonObject(value.toObject());
+
+        for (Ghost*& ghost : ghosts) {
+            if(ghostToUpdate->getGhostType() == ghost->getGhostType()){
+                ghost->reaload(ghostToUpdate);
+            }
+        }
+    }
+}
+
+void BoardWindow::syncDots(const QByteArray &byteArray){
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(byteArray);
+    const QJsonValue &value = jsonDoc.array();
+    QJsonObject json = jsonDoc.object();
+
+    maze.removeDot(json["x"].toInt(), json["y"].toInt());
+
+    reloadScene();
+}
+
+void BoardWindow::sendPacmans(){
+    QJsonArray jsonArray;
+    for (Pacman* &pacman : pacmans) {
+        jsonArray.append(pacman->toJsonObject());
+    }
+
+    QJsonDocument jsonDoc(jsonArray);
+    QString jsonString = jsonDoc.toJson(QJsonDocument::Compact);
+
+    host.sendDataToClients(Resources::ClientMessageType::Pacmans, jsonString.toUtf8());
+}
+
+void BoardWindow::sendGhosts(){
+    QJsonArray jsonArray;
+    for (Ghost* &ghost : ghosts) {
+        jsonArray.append(ghost->toJsonObject());
+    }
+
+    QJsonDocument jsonDoc(jsonArray);
+    QString jsonString = jsonDoc.toJson(QJsonDocument::Compact);
+
+    host.sendDataToClients(Resources::ClientMessageType::Ghosts, jsonString.toUtf8());
+}
+
+void BoardWindow::sendRemoveDotPosition(int x, int y){
+    QJsonObject json;
+
+    json["x"] = x;
+    json["y"] = y;
+
+    QJsonDocument jsonDoc(json);
+    QString jsonString = jsonDoc.toJson(QJsonDocument::Compact);
+
+    host.sendDataToClients(Resources::ClientMessageType::PacmanEatDot, jsonString.toUtf8());
+}
+
+void BoardWindow::setClientPacmanNextDirection(const QByteArray &byteArray){
+    QString jsonString = QString::fromUtf8(byteArray);
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(byteArray);
+    QJsonArray jsonArray = jsonDoc.array();
+    QJsonObject json = jsonDoc.object();
+    int pacmanId = json["pacmanId"].toInt();
+    Resources::Direction nextDirection = static_cast<Resources::Direction>(json["nextDirection"].toInt());
+
+    for (Pacman* &pacman : pacmans) {
+        if(pacman->getId() == pacmanId){
+            pacman->setNextDirection(nextDirection) ;
+        }
+    }
+}
+
+void BoardWindow::reloadScene(){
+    scene->items().clear();
+    maze.renderMaze(scene);
+    loadCharacters();
+}
+

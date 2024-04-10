@@ -9,6 +9,16 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
+/**
+ * @class MainWindow
+ * @brief Główne okno aplikacji, dziedziczące po QMainWindow.
+ *
+ * Klasa MainWindow stanowi główne okno interfejsu użytkownika aplikacji.
+ * Zarządza prezentacją menu startowego,
+ * opcjami gry oraz przejściami między różnymi oknami aplikacji,
+ * okno dołączania do gry, i okno hostowania gry.
+ * Jest to centrum interakcji użytkownika z aplikacją.
+ */
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -19,10 +29,10 @@ public:
 
 private slots:
     void on_pushButtonHost_clicked();
+    void on_pushButtonJoin_clicked();
 
 private:
     Ui::MainWindow *ui;
-    int mazeSize = 19;
 };
 
 #endif // MAINWINDOW_H

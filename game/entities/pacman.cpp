@@ -1,10 +1,16 @@
 #include "game/entities/pacman.h"
 
-Pacman::Pacman(int id): Character(9, 11),
+Pacman::Pacman(int id, QString name): Character(9, 11),
     id(id),
     eatenDots(0),
     dead(false),
-    direction(Resources::Direction::Unset){}
+    name(name),
+    direction(Resources::Direction::Unset)
+{}
+
+Pacman::Pacman(): Character(){
+
+}
 
 QRectF Pacman::boundingRect() const {
     return QRectF(0, 0, 20, 20);
@@ -47,6 +53,11 @@ void Pacman::setDirection(Resources::Direction d) {
 int Pacman::getId()
 {
     return id;
+}
+
+QString Pacman::getName()
+{
+    return name;
 }
 
 
@@ -98,4 +109,48 @@ void Pacman::move()
 
             break;
         }
+}
+
+QJsonObject Pacman::toJsonObject() const {
+    QJsonObject json;
+
+    json["id"] = id;
+    json["dead"] = dead;
+    json["eatenDots"] = eatenDots;
+    json["score"] = score;
+    json["name"] = name;
+    json["direction"] = int(direction);
+    json["nextDirection"] = int(nextDirection);
+    json["screenPosX"] = screenPosX;
+    json["screenPosY"] = screenPosY;
+    json["tileX"] = tileX;
+    json["tileY"] = tileY;
+    return json;
+}
+
+void Pacman::fromJsonObject(const QJsonObject &json) {
+    id = json["id"].toInt();
+    dead = json["dead"].toBool();
+    eatenDots = json["eatenDots"].toInt();
+    score = json["score"].toInt();
+    name = json["name"].toString();
+    direction = static_cast<Resources::Direction>(json["direction"].toInt());
+    nextDirection = static_cast<Resources::Direction>(json["nextDirection"].toInt());
+    screenPosX = json["screenPosX"].toInt();
+    screenPosY = json["screenPosY"].toInt();
+    tileX = json["tileX"].toInt();
+    tileY = json["tileY"].toInt();
+}
+
+void Pacman::reaload(Pacman* newPacman) {
+    dead = newPacman->dead;
+    eatenDots = newPacman->eatenDots;
+    score = newPacman->score;
+    name = newPacman->name;
+    direction = newPacman->direction;
+    nextDirection = newPacman->nextDirection;
+    screenPosX = newPacman->screenPosX;
+    screenPosY = newPacman->screenPosY;
+    tileX = newPacman->tileX;
+    tileY = newPacman->tileY;
 }

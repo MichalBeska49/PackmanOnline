@@ -2,8 +2,7 @@
 #include "ui_hostwindow.h"
 #include "boardwindow.h"
 
-HostWindow::HostWindow(QWidget *parent)
-    : QDialog(parent)
+HostWindow::HostWindow(QWidget *parent): QDialog(parent)
     , ui(new Ui::HostWindow)
 {
     ui->setupUi(this);
@@ -17,18 +16,21 @@ HostWindow::~HostWindow()
 void HostWindow::on_okButton_clicked()
 {
     QString name = ui->nameInput->text();
-    QString address = ui->addressInput->text();
+    bool ok;
+    quint16 port = ui->portInput->text().toUShort(&ok, 10);
 
-    if(name != "" && address != ""){
-        QTcpServer* server = new QTcpServer(this);
+    if(!ok || name == "" || port == NULL){
+        return;
     }
+
     QWidget *window = ui->okButton->window();
-    BoardWindow* boardWindow = new BoardWindow(this);
+    BoardWindow* boardWindow = new BoardWindow(name, port, this);
 
     QWidget *parent = window->parentWidget();
 
-    boardWindow->show();
     parent->close();
     window->close();
+
+    boardWindow->show();
 }
 

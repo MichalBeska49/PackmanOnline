@@ -8,14 +8,25 @@
 #include <QKeyEvent>
 #include <QVector>
 
+/**
+ * @class Maze
+ * @brief Klasa reprezentująca labirynt w grze, dziedzicząca po QObject.
+ *
+ * Klasa Maze służy do zarządzania strukturą labiryntu w grze, w tym umieszczaniem kropek (dots) do zbierania przez Pacmana,
+ * renderowaniem labiryntu, oraz sprawdzaniem kolizji i interakcji z Pacmanem oraz duchami.
+ */
 class Maze: public QObject {
     Q_OBJECT
 public:
+    /**
+     * @brief Konstruktor klasy Maze.
+     */
     explicit Maze();
 
     uint getTile(int x, int y) const;
     void renderMaze(QGraphicsScene *scene);
     bool removeDot(Pacman* pacman);
+    void removeDot(int x, int y);
     bool tileBlocks(int x, int y);
     bool isIntersection(int x, int y);
 
